@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zimora.ai | Cérebro Digital da Eficiência</title>
+    
+    <!-- Scripts & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Montserrat:wght@700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'], 
+                        display: ['Montserrat', 'sans-serif'], 
+                        mono: ['JetBrains Mono', 'monospace'] 
+                    },
+                    colors: { 
+                        brand: { 
+                            navy: '#0A193D', sapphire: '#1E40AF', cyan: '#06B6D4', 
+                            ice: '#F8FAFC', void: '#020617', slate: '#0F172A'
+                        } 
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 10s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root { 
+            --bg-color: #0A193D; 
+            --text-color: #F8FAFC; 
+            /* Vidro mais denso para bloquear as partículas */
+            --glass-bg: rgba(255, 255, 255, 0.1); 
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-blur: 25px;
+        }
+
+        /* Ajuste Mobile: Vidro escuro e quase opaco para leitura perfeita */
+        @media (max-width: 768px) {
+            :root {
+                --glass-bg: rgba(2, 6, 23, 0.9); 
+                --glass-border: rgba(255, 255, 255, 0.1);
+                --glass-blur: 40px;
+            }
+        }
+
+        body { 
+            color: var(--text-color); 
+            transition: color 0.6s ease; 
+            overflow-x: hidden; 
+            -webkit-font-smoothing: antialiased; 
+            background: transparent; /* Fundo controlado por div separada */
+        }
+
+        /* --- CAMADA DE FUNDO (Background Layer) --- */
+        #bg-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            transition: background-color 1.5s ease;
+            z-index: -2; /* Atrás de tudo */
+        }
+
+        /* --- CANVAS (Particles Layer) --- */
+        canvas { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: -1; /* Entre o fundo e o conteúdo */
+            pointer-events: none; 
+        }
+
+        /* --- SONAR SIDEBAR --- */
+        .sonar-sidebar { 
+            width: 60px; height: 100vh; position: fixed; left: 0; top: 0; z-index: 100; 
+            backdrop-filter: blur(25px); border-right: 1px solid var(--glass-border);
+            background: rgba(2, 6, 23, 0.4);
+        }
+        .sonar-progress-container { 
+            position: absolute; left: 50%; top: 15%; width: 1px; 
+            background: rgba(255, 255, 255, 0.05); height: 70%; transform: translateX(-50%);
+        }
+        .sonar-fill {
+            position: absolute; left: 50%; top: 15%; width: 2px;
+            background: #06B6D4; box-shadow: 0 0 15px #06B6D4;
+            transform: translateX(-50%); height: 0; transition: height 0.1s linear;
+        }
+        .nav-icon { 
+            opacity: 0.3; transition: all 0.4s ease; cursor: pointer;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+        }
+        .nav-icon.active { 
+            opacity: 1; color: #06B6D4; transform: scale(1.2);
+            filter: drop-shadow(0 0 8px #06B6D4);
+        }
+
+        /* --- HUD CORE --- */
+        .oracle-core {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 500px; height: 500px; pointer-events: none; z-index: 5;
+        }
+        .hud-layer {
+            position: absolute; top: 50%; left: 50%; border-radius: 50%;
+            border: 1px solid rgba(6, 182, 212, 0.08); transform: translate(-50%, -50%);
+        }
+        .hud-layer-1 { width: 450px; height: 450px; border-style: dotted; animation: rotateCW 180s linear infinite; }
+        .hud-layer-2 { width: 400px; height: 400px; border: 1px solid rgba(30, 64, 175, 0.15); border-top-color: #06B6D4; animation: rotateCCW 25s ease-in-out infinite alternate; }
+
+        @keyframes rotateCW { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+        @keyframes rotateCCW { from { transform: translate(-50%, -50%) rotate(360deg); } to { transform: translate(-50%, -50%) rotate(0deg); } }
+
+        /* --- TEXT & INTERACTION --- */
+        .z-reactor-text {
+            color: transparent; background-clip: text; -webkit-background-clip: text;
+            background-image: linear-gradient(135deg, #F8FAFC 10%, #06B6D4 50%, #1E40AF 90%);
+            background-size: 200% auto; animation: textShine 12s ease-in-out infinite alternate;
+        }
+        @keyframes textShine { to { background-position: 200% center; } }
+
+        .interactive-blur {
+            filter: blur(12px); opacity: 0; transform: translateY(15px);
+            transition: filter 2s cubic-bezier(0.4, 0, 0.2, 1), opacity 2s cubic-bezier(0.4, 0, 0.2, 1), transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: filter, opacity, transform;
+        }
+        .interactive-blur.revealed { filter: blur(0); opacity: 1; transform: translateY(0); }
+        .text-gradient-vision { background: linear-gradient(135deg, #1E40AF 0%, #020617 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+        /* --- UI COMPONENTS --- */
+        .glass-card { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(var(--glass-blur)); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 32px; 
+            /* Importante: criar um contexto de empilhamento novo */
+            isolation: isolate;
+            z-index: 20; 
+        }
+        
+        .chat-bubble { border-radius: 12px; padding: 12px; margin-bottom: 8px; font-size: 0.85rem; max-width: 85%; line-height: 1.5; }
+        .user-msg { background: rgba(6, 182, 212, 0.2); align-self: flex-end; color: #fff; }
+        .ai-msg { background: rgba(255, 255, 255, 0.05); align-self: flex-start; color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        #portal-transition { 
+            position: fixed; top: 50%; left: 50%; width: 100vmax; height: 100vmax; 
+            background: white; z-index: 200; display: none; 
+            transform: translate(-50%, -50%) scale(0); border-radius: 50%; 
+            transition: transform 1.2s cubic-bezier(0.7, 0, 0.3, 1); 
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        /* --- ANIMAÇÕES RECRUTADOR --- */
+        @keyframes swipeRight {
+            0% { transform: translateX(0) rotate(0); opacity: 1; }
+            100% { transform: translateX(150%) rotate(15deg); opacity: 0; }
+        }
+        @keyframes swipeLeft {
+            0% { transform: translateX(0) rotate(0); opacity: 1; }
+            100% { transform: translateX(-150%) rotate(-15deg); opacity: 0; }
+        }
+        @keyframes fadeInScale {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-swipe-right { animation: swipeRight 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
+        .animate-swipe-left { animation: swipeLeft 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
+        .animate-appear { animation: fadeInScale 0.5s ease-out forwards; }
+
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- BACKGROUND LAYERS -->
+    <div id="bg-layer"></div>
+    <canvas id="main-canvas"></canvas>
+    
+    <!-- UI ELEMENTS -->
+    <div id="lens" class="clarity-lens"></div>
+    <div id="portal-transition"></div>
+
+    <!-- SIDEBAR SONAR -->
+    <aside class="sonar-sidebar flex flex-col items-center py-10 hidden md:flex">
+        <div class="sonar-progress-container">
+             <div id="sonar-fill" class="sonar-fill"></div>
+        </div>
+        
+        <div class="mb-20 z-10 font-black text-white bg-brand-sapphire w-10 h-10 flex items-center justify-center rounded-lg shadow-2xl">Z</div>
+        
+        <div class="flex flex-col gap-12 relative z-10">
+            <a href="#hero" class="nav-icon active" data-section="hero" title="Início"><i data-lucide="compass"></i></a>
+            <a href="#organization" class="nav-icon" data-section="organization" title="Espinha Dorsal"><i data-lucide="layers-3"></i></a>
+            <a href="#simulators" class="nav-icon" data-section="simulators" title="Agentes"><i data-lucide="bot"></i></a>
+            <a href="#vision" class="nav-icon" data-section="vision" title="Resultados"><i data-lucide="eye"></i></a>
+        </div>
+    </aside>
+
+    <main class="md:ml-[60px]">
+        
+        <!-- SECTION 01: HERO (THE COVER) -->
+        <section id="hero" class="min-h-screen relative flex items-center justify-center px-6 overflow-hidden z-10">
+            <!-- HUD CORE DESIGN -->
+            <div class="oracle-core opacity-20">
+                <div class="hud-layer hud-layer-1"></div>
+                <div class="hud-layer hud-layer-2"></div>
+            </div>
+
+            <div class="text-center relative z-20 max-w-6xl w-full">
+                <div class="flex flex-col items-center group cursor-default mb-16">
+                    <!-- ZIMORA.AI -->
+                    <h1 class="z-reactor-text text-6xl md:text-8xl font-[900] leading-none tracking-tighter mb-4 opacity-100 transition-transform group-hover:scale-[1.01] duration-700">
+                        ZIMORA.AI
+                    </h1>
+                    
+                    <!-- AI FIRST -->
+                    <span class="text-brand-cyan font-display font-black text-2xl md:text-4xl tracking-[0.2em] uppercase drop-shadow-[0_0_30px_rgba(6,182,212,0.6)] animate-pulse-slow">
+                        AI FIRST
+                    </span>
+                    
+                    <p class="text-lg md:text-2xl font-[300] text-slate-300 uppercase tracking-[0.4em] opacity-70 mt-16">
+                        a próxima fronteira da tecnologia
+                    </p>
+                </div>
+                
+                <button onclick="scrollToContact()" class="px-20 py-6 bg-brand-sapphire text-white rounded-full font-black uppercase tracking-[0.4em] text-[11px] shadow-[0_20px_60px_rgba(30,64,175,0.5)] hover:bg-white hover:text-brand-void transition-all duration-700 transform hover:scale-105 active:scale-95 group border border-white/10">
+                    ✨ Iniciar Diagnóstico
+                </button>
+            </div>
+            
+            <div class="absolute inset-0 m-auto w-full h-full bg-brand-sapphire/10 blur-[200px] -z-10 animate-pulse-slow"></div>
+        </section>
+
+        <!-- SECTION 02: ORGANIZATION (ESPINHA DORSAL) -->
+        <section id="organization" class="min-h-screen flex items-center px-6 md:px-24 py-20 relative z-20">
+            <div class="container mx-auto grid lg:grid-cols-2 gap-32 relative text-left">
+                <div class="flex flex-col justify-center">
+                    <div class="mb-12">
+                        <span class="font-mono text-brand-cyan text-2xl md:text-5xl font-bold mb-6 block uppercase tracking-[0.3em] leading-tight">Engenharia <br>de Dados</span>
+                        <h3 class="text-3xl md:text-5xl font-[900] tracking-tighter leading-[0.9] text-white uppercase opacity-70">
+                            Espinha <br>Dorsal.
+                        </h3>
+                    </div>
+                    
+                    <div class="space-y-10">
+                        <p class="interactive-blur text-xl md:text-2xl font-[400] leading-relaxed text-slate-200">
+                            Dados brutos são passivos. A Zimora os converte em <span class="text-brand-cyan font-bold">ativos operacionais</span> eliminando o instinto e blindando o seu lucro real.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col justify-center gap-10">
+                    <div class="p-10 glass-card border-l-4 border-brand-cyan hover:bg-white/5 transition-all group">
+                        <span class="font-mono text-[10px] text-brand-cyan uppercase tracking-[0.4em] mb-4 block opacity-60">Protocolo Ingestão</span>
+                        <h4 class="text-xl font-bold mb-4 tracking-tight text-white uppercase">Safe-Read Legacy</h4>
+                        <p class="interactive-blur text-slate-300 font-[400] leading-relaxed text-sm">
+                            Conexão não-destrutiva com ERPs (SAP, Totvs, Oracle). Capturamos sua inteligência histórica sem alterar uma única linha da sua operação diária.
+                        </p>
+                    </div>
+                    
+                    <div class="p-10 glass-card border-l-4 border-brand-cyan hover:bg-white/5 transition-all group text-left">
+                        <span class="font-mono text-[10px] text-brand-cyan uppercase tracking-[0.4em] mb-4 block opacity-60">Protocolo Análise</span>
+                        <h4 class="text-xl font-bold mb-4 tracking-tight text-white uppercase">Lucratividade Real</h4>
+                        <p class="interactive-blur text-slate-300 font-[400] leading-relaxed text-sm">
+                            P&L dinâmico e projeção de fluxo de caixa para o próximo trimestre. Saiba onde cada centavo da sua margem está sendo consumido antes do fechamento do mês.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 03: AGENTES SIMULADORES -->
+        <section id="simulators" class="min-h-screen relative flex flex-col justify-center px-6 md:px-24 py-20 bg-brand-void/50 z-20">
+            <div class="container mx-auto">
+                <div class="text-center mb-20">
+                    <span class="font-mono text-brand-cyan text-xs font-bold uppercase tracking-[0.5em] mb-4 block">Unidade Cérebro Digital</span>
+                    <h2 class="text-4xl md:text-7xl font-black text-white tracking-tighter mb-4">Agentes Cognitivos</h2>
+                    <p class="text-slate-400 font-light text-lg md:text-xl italic opacity-80">Simulações básicas para você 'ver' na prática</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
+                    <!-- Simulador 1: Treinador Real IA (COM INPUT LIVRE + SUGESTÕES) -->
+                    <div class="glass-card p-6 md:p-10 flex flex-col h-[500px] md:h-[550px] relative overflow-hidden">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-10 h-10 bg-brand-cyan/20 rounded-lg flex items-center justify-center text-brand-cyan shadow-glow-cyan"><i data-lucide="bot"></i></div>
+                            <div>
+                                <h4 class="font-bold text-white uppercase text-xs md:text-sm tracking-widest text-left">Treinador Cérebro Digital ✨</h4>
+                                <p class="text-[10px] text-brand-cyan uppercase font-bold tracking-tighter text-left">Gemini Contextual</p>
+                            </div>
+                        </div>
+                        <div id="chat-container" class="flex-1 overflow-y-auto mb-4 pr-2 flex flex-col custom-scrollbar">
+                            <div class="chat-bubble ai-msg">Olá. Sou o seu Cérebro Digital de Operações. Como posso otimizar a sua rentabilidade hoje?</div>
+                        </div>
+                        
+                        <!-- BOTÕES DE SUGESTÃO (Controle de ação) -->
+                        <div id="quick-suggestions" class="flex gap-2 mb-4 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                            <button onclick="askGeminiPreset('Como aumentar a rentabilidade?')" class="text-[10px] md:text-xs bg-brand-void/40 hover:bg-brand-cyan/20 border border-white/10 hover:border-brand-cyan/50 px-3 py-2 rounded-full whitespace-nowrap transition-all text-cyan-200">💰 Rentabilidade</button>
+                            <button onclick="askGeminiPreset('Reduzir custos operacionais')" class="text-[10px] md:text-xs bg-brand-void/40 hover:bg-brand-cyan/20 border border-white/10 hover:border-brand-cyan/50 px-3 py-2 rounded-full whitespace-nowrap transition-all text-cyan-200">📉 Reduzir Custos</button>
+                            <button onclick="askGeminiPreset('Treinamento de Liderança')" class="text-[10px] md:text-xs bg-brand-void/40 hover:bg-brand-cyan/20 border border-white/10 hover:border-brand-cyan/50 px-3 py-2 rounded-full whitespace-nowrap transition-all text-cyan-200">👥 Treinamento</button>
+                        </div>
+
+                        <div class="flex gap-2 bg-brand-void/30 p-2 rounded-full border border-white/5">
+                            <input id="chat-input" type="text" placeholder="ex.: como aumentar minha rentabilidade" class="flex-1 bg-transparent px-4 md:px-6 py-2 md:py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') askGemini()">
+                            <button id="chat-send-btn" onclick="askGemini()" class="w-10 h-10 md:w-12 md:h-12 bg-brand-cyan rounded-full flex items-center justify-center text-brand-void hover:scale-105 transition-all shadow-glow-cyan"><i data-lucide="zap" class="fill-current w-4 h-4"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Simulador 2: Recrutador -->
+                    <div class="glass-card p-6 md:p-10 flex flex-col h-[500px] md:h-[550px] relative text-left">
+                         <div class="flex items-center gap-4 mb-6">
+                            <div class="w-10 h-10 bg-brand-sapphire/20 rounded-lg flex items-center justify-center text-brand-sapphire"><i data-lucide="users"></i></div>
+                            <div>
+                                <h4 class="font-bold text-white uppercase text-xs md:text-sm tracking-widest text-left">Recrutador IA</h4>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-tighter text-left">Triagem Cognitiva</p>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center relative">
+                            <!-- Card do Candidato -->
+                            <div id="candidate-card" class="candidate-card bg-white p-6 md:p-8 rounded-[2rem] border border-slate-100 shadow-2xl flex flex-col max-w-sm w-full transition-all duration-300">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-12 h-12 bg-brand-navy rounded-full flex items-center justify-center text-white font-black text-sm">#84</div>
+                                    <div class="text-left text-brand-void">
+                                        <!-- Nome Anonimizado -->
+                                        <h5 class="font-bold text-slate-900 text-base md:text-lg">Candidato [Confidencial]</h5>
+                                        <p class="text-[10px] md:text-xs text-slate-500">ID: 8492-EXEC | Regional Manager</p>
+                                    </div>
+                                </div>
+                                <div class="mb-6 bg-slate-50 p-4 rounded-xl text-left">
+                                    <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest"><span>Aderência Cognitiva</span><span class="text-brand-sapphire">94%</span></div>
+                                    <div class="w-full bg-slate-200 h-1.5 rounded-full"><div class="bg-brand-sapphire h-full w-[94%] rounded-full shadow-glow-sapphire"></div></div>
+                                </div>
+                                <p class="text-xs md:text-sm text-slate-600 italic leading-relaxed mb-8 text-left">"Expertise comprovada em P&L e gestão de dados. Perfil de alta performance e liderança analítica."</p>
+                                <div class="mt-auto flex gap-4">
+                                    <button class="flex-1 py-3 md:py-4 bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-2xl font-bold text-[10px] md:text-xs transition-colors" onclick="handleRecruiterDecision('reject')">REJEITAR</button>
+                                    <button class="flex-1 py-3 md:py-4 bg-brand-sapphire text-white hover:bg-brand-cyan rounded-2xl font-bold text-[10px] md:text-xs shadow-lg transition-colors" onclick="handleRecruiterDecision('hire')">CONTRATAR</button>
+                                </div>
+                            </div>
+
+                            <!-- Feedback Layer (Invisível inicialmente) -->
+                            <div id="recruiter-feedback" class="absolute inset-0 flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-500">
+                                <div id="feedback-icon" class="w-16 h-16 rounded-full flex items-center justify-center mb-4"></div>
+                                <h4 id="feedback-title" class="text-2xl font-bold text-white uppercase tracking-wider"></h4>
+                                <p class="text-slate-400 text-sm mt-2">Processando próximo perfil...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PERSONALIZAÇÃO E REUNIÃO -->
+                <div class="mt-20 md:mt-24 text-center">
+                    <h3 class="text-white text-3xl md:text-7xl font-black tracking-tighter mb-8 md:mb-10 drop-shadow-lg uppercase leading-tight">
+                        Personalize <br class="md:hidden">como quiser
+                    </h3>
+                    <button onclick="scrollToContact()" class="px-12 md:px-16 py-5 md:py-6 bg-brand-cyan text-brand-void font-black uppercase tracking-[0.3em] text-[10px] md:text-[11px] rounded-full hover:bg-white hover:shadow-[0_0_30px_#06B6D4] transition-all transform hover:scale-110 active:scale-95">
+                        Agendar uma reunião
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 04: VISION -->
+        <section id="vision" class="min-h-screen relative flex items-center justify-center px-6 py-20 overflow-hidden text-center z-20">
+            <div class="container mx-auto relative z-10 text-center">
+                <div class="mb-16 md:mb-24 flex flex-col items-center">
+                    <h2 class="text-5xl md:text-9xl font-[900] text-gradient-vision tracking-tighter leading-none mb-6 uppercase">Resultados obtidos.</h2>
+                    <p class="text-slate-800 text-lg md:text-4xl font-[400] tracking-tight opacity-90 max-w-4xl mx-auto leading-tight">A visão cristalina do seu próximo passo estratégico e a consolidação da eficiência operacional.</p>
+                </div>
+                <div id="dashboard" class="max-w-6xl mx-auto bg-white p-8 md:p-24 rounded-[40px] md:rounded-[60px] shadow-[0_120px_180px_-40px_rgba(0,0,0,0.15)] border border-blue-50 text-brand-void relative group overflow-hidden text-left">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-20 mb-16 md:mb-24">
+                        <div class="space-y-2 md:space-y-4 text-center md:text-left">
+                            <p class="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-widest">Revenue Uplift</p>
+                            <div class="text-6xl md:text-7xl font-[900] text-brand-void tracking-tighter"><span class="counter" data-target="174">0</span>%</div>
+                        </div>
+                        <div class="space-y-2 md:space-y-4 text-center md:text-left">
+                            <p class="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-widest">Margem Líquida</p>
+                            <div class="text-6xl md:text-7xl font-[900] text-brand-sapphire tracking-tighter"><span class="counter" data-target="42">0</span>%</div>
+                        </div>
+                        <div class="space-y-2 md:space-y-4 text-center md:text-left">
+                            <p class="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-widest">Burn Rate Red</p>
+                            <div class="text-6xl md:text-7xl font-[900] text-brand-cyan tracking-tighter">-<span class="counter" data-target="34">0</span>%</div>
+                        </div>
+                    </div>
+                    <div id="contact-area" class="pt-16 md:pt-24 border-t border-slate-100 flex flex-col items-center text-center">
+                        <div class="w-full max-w-xl relative group">
+                            <label class="block font-sans font-bold text-[10px] uppercase tracking-[0.5em] text-slate-400 mb-8 uppercase">Solicitar Sincronização Estratégica</label>
+                            <div class="relative">
+                                <input type="tel" id="user-phone" placeholder="Seu WhatsApp Corporativo" class="w-full bg-slate-50 border-2 border-slate-100 px-8 md:px-12 py-6 md:py-7 rounded-[35px] text-brand-void focus:outline-none focus:border-brand-sapphire focus:bg-white transition-all font-[300] text-lg md:text-2xl placeholder:text-slate-300 shadow-inner">
+                                <button onclick="triggerPortal()" class="absolute right-2 md:right-3 top-2 md:top-3 bottom-2 md:bottom-3 px-8 md:px-12 bg-brand-void text-white rounded-[25px] font-black uppercase text-[10px] tracking-[0.4em] hover:bg-brand-sapphire transition-all shadow-2xl">
+                                    ✨ Avançar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="bg-brand-void text-white py-20 px-6 relative overflow-hidden border-t border-white/5">
+            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center text-[10px] font-sans font-bold opacity-30 uppercase tracking-[0.3em] gap-6 md:gap-0">
+                <p>&copy; 2026 ZIMORA SYSTEMS. AI FIRST PROTOCOL.</p>
+                <div class="flex gap-8 md:gap-16">
+                    <a href="#" class="hover:text-brand-cyan transition-colors">Termos</a>
+                    <a href="#" class="hover:text-brand-cyan transition-colors">Privacidade</a>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <!-- PORTAL MODAL -->
+    <div id="modal-setup" class="fixed inset-0 z-[210] hidden items-center justify-center p-4 md:p-6">
+        <div class="absolute inset-0 bg-brand-void/95 backdrop-blur-3xl" onclick="closePortal()"></div>
+        <div id="modal-content" class="bg-white p-8 md:p-24 max-w-2xl w-full rounded-[40px] md:rounded-[70px] shadow-2xl relative z-10 border border-white text-brand-void overflow-y-auto max-h-[90vh] custom-scrollbar">
+            <div id="setup-initial-view">
+                <div class="text-center mb-10 md:mb-16">
+                    <h3 class="text-3xl md:text-4xl font-[900] mb-4 md:mb-6 tracking-tighter text-brand-void uppercase">Sincronização.</h3>
+                    <p class="text-slate-500 font-[300] text-lg md:text-xl leading-relaxed">Identifique-se para o Cérebro Digital Zimora processar o seu diagnóstico personalizado ✨.</p>
+                </div>
+                <form class="space-y-6 md:space-y-8" onsubmit="handleFinalHandoff(event)">
+                    <div class="space-y-4">
+                        <label class="font-sans font-bold text-[10px] uppercase text-slate-400 tracking-widest text-left block">Identidade do Executivo</label>
+                        <input type="text" id="exec-name" placeholder="Nome Completo" required class="w-full bg-slate-50 border-b-2 border-slate-100 py-4 md:py-6 px-4 focus:outline-none focus:border-brand-sapphire text-lg md:text-xl transition-all">
+                    </div>
+                    <div class="space-y-4">
+                        <label class="font-sans font-bold text-[10px] uppercase text-slate-400 tracking-widest text-left block">Empresa / Negócio</label>
+                        <input type="text" id="exec-company" placeholder="Nome da sua Empresa" required class="w-full bg-slate-50 border-b-2 border-slate-100 py-4 md:py-6 px-4 focus:outline-none focus:border-brand-sapphire text-lg md:text-xl transition-all">
+                    </div>
+                    <button type="submit" id="final-btn" class="w-full py-5 md:py-7 bg-brand-void text-white font-[900] rounded-[30px] uppercase text-xs tracking-[0.4em] mt-8 md:mt-12 hover:bg-brand-sapphire shadow-3xl transition-all active:scale-95">
+                        ✨ Gerar Roteiro Estratégico
+                    </button>
+                </form>
+            </div>
+            
+            <div id="setup-result-view" class="hidden animate-in fade-in zoom-in">
+                 <div class="flex items-center gap-4 mb-8">
+                     <div class="w-12 h-12 bg-brand-cyan/20 rounded-xl flex items-center justify-center text-brand-cyan"><i data-lucide="sparkles"></i></div>
+                     <h3 class="text-2xl md:text-3xl font-[900] tracking-tight text-brand-void uppercase">Roteiro Estratégico</h3>
+                 </div>
+                 <div id="diagnosis-text" class="text-slate-600 font-[300] text-base md:text-lg leading-relaxed space-y-4 mb-12 text-left">
+                     <!-- Result Injected Here -->
+                 </div>
+                 <button onclick="closePortal()" class="w-full py-5 border-2 border-slate-200 rounded-3xl font-bold text-slate-400 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest">Encerrar Sincronia</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SISTEMA AUTÔNOMO DE SEGURANÇA E CONHECIMENTO (MOCK INTELIGENTE) ---
+        
+        const knowledgeBase = {
+            "rentabilidade": 
+                "Estratégia Zimora: Otimização de Estoque (previsão de demanda via IA reduz sobras em 15%) + Precificação Dinâmica (ajuste em tempo real). Foque no LTV (Lifetime Value).",
+            "lucro": 
+                "Estratégia Zimora: Otimização de Estoque (previsão de demanda via IA reduz sobras em 15%) + Precificação Dinâmica (ajuste em tempo real). Foque no LTV (Lifetime Value).",
+            
+            "custos": 
+                "Protocolo de Redução: 1. RPA para eliminar tarefas manuais no financeiro. 2. IoT para eficiência energética. 3. Algoritmos preditivos para negociação de insumos.",
+            "operacional": 
+                "Protocolo de Redução: 1. RPA para eliminar tarefas manuais no financeiro. 2. IoT para eficiência energética. 3. Algoritmos preditivos para negociação de insumos.",
+            
+            "treinamento": 
+                "Gestão Cognitiva: Use tutores virtuais para onboarding 24/7 e análise de sentimento para prever turnover. Personalize trilhas de aprendizado.",
+            "equipe": 
+                "Gestão Cognitiva: Use tutores virtuais para onboarding 24/7 e análise de sentimento para prever turnover. Personalize trilhas de aprendizado.",
+                
+            "default":
+                "Análise em andamento. Nossos sistemas identificaram uma oportunidade de otimização de 12-18% para este cenário. Recomendo uma auditoria completa dos seus dados."
+        };
+
+        // Simula o pensamento da IA sem chamar API externa
+        async function callGeminiMock(prompt) {
+            return new Promise(resolve => {
+                const delay = Math.floor(Math.random() * 800) + 800; // Levemente mais rápido
+                
+                setTimeout(() => {
+                    const lowerPrompt = prompt.toLowerCase();
+                    let response = knowledgeBase["default"];
+                    
+                    if (lowerPrompt.includes("rentabilidade") || lowerPrompt.includes("lucro") || lowerPrompt.includes("vendas")) {
+                        response = knowledgeBase["rentabilidade"];
+                    } else if (lowerPrompt.includes("custo") || lowerPrompt.includes("despesa") || lowerPrompt.includes("gasto")) {
+                        response = knowledgeBase["custos"];
+                    } else if (lowerPrompt.includes("treina") || lowerPrompt.includes("equipe") || lowerPrompt.includes("rh") || lowerPrompt.includes("liderança")) {
+                        response = knowledgeBase["treinamento"];
+                    }
+                    
+                    resolve(response);
+                }, delay);
+            });
+        }
+
+        // --- FUNÇÃO PARA OS BOTÕES DE SUGESTÃO ---
+        async function askGeminiPreset(question) {
+            // Reaproveita a lógica de envio
+            const input = document.getElementById('chat-input');
+            if(input) input.value = question;
+            await askGemini();
+        }
+
+        async function askGemini() {
+            const input = document.getElementById('chat-input');
+            const container = document.getElementById('chat-container');
+            const btn = document.getElementById('chat-send-btn');
+            
+            const question = input?.value.trim();
+            if (!question || !container || !btn) return;
+
+            // UI: Adiciona mensagem do usuário
+            container.innerHTML += `<div class="chat-bubble user-msg animate-in slide-in-from-right-4 ml-auto">${question}</div>`;
+            input.value = "";
+            container.scrollTop = container.scrollHeight;
+
+            // UI: Bloqueia e mostra loading
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin w-4 h-4 text-brand-void"></i>';
+            lucide.createIcons();
+
+            container.innerHTML += `<div id="ai-loading" class="chat-bubble ai-msg animate-pulse">✨ Acessando Neural Core...</div>`;
+            container.scrollTop = container.scrollHeight;
+
+            // LÓGICA: Chama o Mock
+            const response = await callGeminiMock(question);
+
+            // UI: Mostra resposta
+            document.getElementById('ai-loading')?.remove();
+            container.innerHTML += `<div class="chat-bubble ai-msg animate-in fade-in">✨ ${response}</div>`;
+            container.scrollTop = container.scrollHeight;
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="zap" class="fill-current w-4 h-4"></i>';
+            lucide.createIcons();
+            
+            setTimeout(() => input.focus(), 100);
+        }
+
+        // --- LÓGICA DO RECRUTADOR (ANIMAÇÃO) ---
+        function handleRecruiterDecision(decision) {
+            const card = document.getElementById('candidate-card');
+            const feedback = document.getElementById('recruiter-feedback');
+            const icon = document.getElementById('feedback-icon');
+            const title = document.getElementById('feedback-title');
+            
+            if(!card || !feedback) return;
+
+            // 1. Aplica animação de saída
+            if (decision === 'hire') {
+                card.classList.add('animate-swipe-right');
+                icon.className = "w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-green-500 text-white shadow-[0_0_30px_rgba(34,197,94,0.6)]";
+                icon.innerHTML = '<i data-lucide="check" class="w-8 h-8"></i>';
+                title.innerText = "Contratado";
+                title.classList.add('text-green-400');
+            } else {
+                card.classList.add('animate-swipe-left');
+                icon.className = "w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.6)]";
+                icon.innerHTML = '<i data-lucide="x" class="w-8 h-8"></i>';
+                title.innerText = "Rejeitado";
+                title.classList.add('text-red-400');
+            }
+            lucide.createIcons();
+
+            // 2. Mostra feedback após o swipe
+            setTimeout(() => {
+                card.classList.add('invisible'); // Oculta o card original
+                feedback.classList.remove('hidden');
+                setTimeout(() => feedback.classList.remove('opacity-0'), 50); // Fade in suave
+            }, 400);
+
+            // 3. Reseta para o estado inicial após 2.5s
+            setTimeout(() => {
+                feedback.classList.add('opacity-0');
+                
+                setTimeout(() => {
+                    feedback.classList.add('hidden');
+                    // Remove classes de animação e visibilidade
+                    card.classList.remove('invisible', 'animate-swipe-right', 'animate-swipe-left');
+                    // Adiciona animação de entrada
+                    card.classList.add('animate-appear');
+                    
+                    // Limpa formatação do feedback para o próximo uso
+                    title.className = "text-2xl font-bold text-white uppercase tracking-wider";
+                    
+                    // Remove a animação de entrada depois que terminar para não bugar o próximo swipe
+                    setTimeout(() => card.classList.remove('animate-appear'), 600);
+                }, 500);
+            }, 2500);
+        }
+
+        async function handleFinalHandoff(e) {
+            e.preventDefault();
+            const btn = document.getElementById('final-btn');
+            const nameEl = document.getElementById('exec-name');
+            const compEl = document.getElementById('exec-company');
+            const initialView = document.getElementById('setup-initial-view');
+            const resultView = document.getElementById('setup-result-view');
+            const diagContent = document.getElementById('diagnosis-text');
+
+            if (!btn || !nameEl || !compEl) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin w-5 h-5 mx-auto text-white"></i>';
+            lucide.createIcons();
+
+            setTimeout(() => {
+                const company = compEl.value;
+                const mockPlan = `
+                    <strong>PLANO TÁTICO: ${company.toUpperCase()}</strong><br><br>
+                    1. <strong>Diagnóstico de Dados (48h):</strong> Conexão segura dos seus ERPs atuais ao nosso núcleo para leitura de padrões ocultos.<br>
+                    2. <strong>Automação Imediata:</strong> Implementação de agentes de suporte e financeiro para ROI no primeiro mês.<br>
+                    3. <strong>Expansão Cognitiva:</strong> Treinamento da sua equipe com ferramentas de IA proprietárias da Zimora.<br><br>
+                    <em>Um consultor sênior entrará em contato via WhatsApp em breve.</em>
+                `;
+
+                initialView.classList.add('hidden');
+                resultView.classList.remove('hidden');
+                diagContent.innerHTML = mockPlan;
+                lucide.createIcons();
+            }, 2500); 
+        }
+
+        function scrollToContact() {
+            const vision = document.getElementById('vision');
+            const input = document.getElementById('user-phone');
+            if (vision) {
+                vision.scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => { if (input) input.focus(); }, 800);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const body = document.body;
+            const bgLayer = document.getElementById('bg-layer'); 
+            const sonarFill = document.getElementById('sonar-fill');
+            const navIcons = document.querySelectorAll('.nav-icon');
+            const sections = document.querySelectorAll('section');
+
+            const revealObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const items = entry.target.querySelectorAll('.interactive-blur');
+                        items.forEach((item, index) => {
+                            setTimeout(() => { item.classList.add('revealed'); }, index * 500); 
+                        });
+                        revealObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            const organizationSection = document.getElementById('organization');
+            if (organizationSection) revealObserver.observe(organizationSection);
+
+            const handleScroll = () => {
+                const scrollPos = window.scrollY;
+                const scrollPercent = scrollPos / (document.documentElement.scrollHeight - window.innerHeight);
+                if (sonarFill) sonarFill.style.height = `${scrollPercent * 70}%`;
+
+                if (scrollPercent < 0.2) {
+                    if(bgLayer) bgLayer.style.backgroundColor = '#0A193D';
+                    body.style.setProperty('--text-color', '#F8FAFC');
+                } else if (scrollPercent < 0.75) {
+                    if(bgLayer) bgLayer.style.backgroundColor = '#1E40AF';
+                    body.style.setProperty('--text-color', '#F8FAFC');
+                } else {
+                    if(bgLayer) bgLayer.style.backgroundColor = '#F8FAFC';
+                    body.style.setProperty('--text-color', '#0F172A');
+                    startCounters();
+                }
+
+                sections.forEach(sec => {
+                    const top = sec.offsetTop - 300;
+                    if (scrollPos >= top && scrollPos < top + sec.offsetHeight) {
+                        navIcons.forEach(icon => icon.classList.toggle('active', icon.getAttribute('data-section') === sec.id));
+                    }
+                });
+            };
+            window.addEventListener('scroll', handleScroll);
+
+            // --- CANVAS PHYSICS: RESPONSIVE DENSITY ---
+            const canvas = document.getElementById('main-canvas');
+            const ctx = canvas.getContext('2d');
+            let width, height, particles = [];
+            
+            const isMobile = window.innerWidth < 768;
+            const particleCount = isMobile ? 25 : 50; 
+
+            function resize() {
+                width = window.innerWidth; height = window.innerHeight;
+                canvas.width = width; canvas.height = height;
+            }
+
+            class Particle {
+                constructor() { this.reset(); this.y = Math.random() * height; }
+                reset() { 
+                    this.x = Math.random() * width; 
+                    this.y = -100;
+                    this.vx = (Math.random() - 0.5) * 0.08; 
+                    this.vy = Math.random() * 0.1 + 0.05; 
+                    this.size = Math.random() * 1.5 + 1; 
+                    this.color = '#06B6D4';
+                }
+                update() {
+                    const scrollP = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+                    if (scrollP > 0.22 && scrollP < 0.65) {
+                        const targetX = width / 2 + (Math.random() - 0.5) * 40;
+                        this.x += (targetX - this.x) * 0.04; 
+                    } else {
+                        this.x += this.vx; 
+                    }
+                    this.y += this.vy;
+                    if (this.y > height) this.reset();
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+
+            let randomConnections = [];
+            function updateRandomConnections() {
+                randomConnections = randomConnections.filter(c => c.life > 0);
+                const scrollP = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+                
+                const maxConn = isMobile ? 6 : ((scrollP > 0.2 && scrollP < 0.7) ? 5 : 12);
+
+                if (randomConnections.length < maxConn && Math.random() > 0.99) {
+                    const a = Math.floor(Math.random() * particles.length);
+                    const b = Math.floor(Math.random() * particles.length);
+                    if (a !== b) randomConnections.push({ a, b, life: 1.0, speed: Math.random() * 0.003 + 0.0015 });
+                }
+
+                randomConnections.forEach(c => {
+                    c.life -= c.speed;
+                    const pA = particles[c.a]; const pB = particles[c.b];
+                    if (pA && pB) {
+                        let opacity = Math.sin(c.life * Math.PI) * (isMobile ? 0.06 : 0.08); 
+                        ctx.save();
+                        ctx.strokeStyle = `rgba(6, 182, 212, ${opacity})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath(); ctx.moveTo(pA.x, pA.y); ctx.lineTo(pB.x, pB.y); ctx.stroke();
+                        ctx.restore();
+                    }
+                });
+            }
+
+            function initParticles() { resize(); particles = []; for(let i=0; i<particleCount; i++) particles.push(new Particle()); }
+            function animate() { ctx.clearRect(0,0,width,height); particles.forEach(p => { p.update(); p.draw(); }); updateRandomConnections(); requestAnimationFrame(animate); }
+            window.addEventListener('resize', () => { resize(); initParticles(); });
+            initParticles(); animate();
+        });
+
+        function triggerPortal() {
+            const p = document.getElementById('portal-transition');
+            if (p) {
+                p.style.display = 'block';
+                setTimeout(() => { p.style.transform = 'translate(-50%, -50%) scale(1)'; setTimeout(() => { document.getElementById('modal-setup').classList.replace('hidden', 'flex'); }, 800); }, 50);
+            }
+        }
+
+        function closePortal() {
+            const p = document.getElementById('portal-transition');
+            if (p) { p.style.transform = 'translate(-50%, -50%) scale(0)'; document.getElementById('modal-setup').classList.replace('flex', 'hidden'); setTimeout(() => { p.style.display = 'none'; }, 1200); }
+        }
+
+        let countersDone = false;
+        function startCounters() {
+            if (countersDone) return; countersDone = true;
+            document.querySelectorAll('.counter').forEach(c => {
+                const target = +c.getAttribute('data-target');
+                let cur = 0;
+                const inc = target / 60;
+                const timer = setInterval(() => { if (cur < target) { cur += (target/50); c.innerText = Math.ceil(cur); } else { c.innerText = target; clearInterval(timer); } }, 30);
+            });
+        }
+    </script>
+</body>
+</html>
